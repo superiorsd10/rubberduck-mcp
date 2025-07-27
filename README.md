@@ -112,14 +112,14 @@ rubberduck/
 
 ### Core Components
 - **MCP Server Layer** (`src/server.ts`): Implements MCP protocol, registers tools, handles JSON-RPC requests
-- **State Management Layer** (`src/state/manager.ts`): File-based persistence using `/tmp/rubberduck-state.json` for cross-process communication
-- **CLI Interface Layer** (`src/cli/interface.ts`): Human-facing terminal UI with colored output
+- **State Management Layer** (`src/state/manager.ts`): In-memory state management with EventEmitter for real-time communication
+- **CLI Interface Layer** (`src/cli/interface.ts`): Human-facing terminal UI with colored output and event-driven updates
 - **Tools** (`src/tools/`): Implementation of clarify and yap tools
 
 ### Communication Flow
-1. LLM calls tool → Server processes → StateManager persists to temp file
-2. CLI polls and displays → Human responds → StateManager updates
-3. Server returns response to LLM
+1. LLM calls tool → Server processes → StateManager updates in-memory state
+2. StateManager emits events → CLI receives events and displays in real-time
+3. Human responds → StateManager updates state → Server returns response to LLM
 
 ## Tool Schemas
 

@@ -18,7 +18,7 @@ class RubberduckServer {
   private yapTool: YapTool;
   private isCliMode: boolean = false;
 
-  constructor() {
+  constructor(isServer: boolean = false) {
     this.server = new Server(
       {
         name: 'rubberduck',
@@ -32,7 +32,7 @@ class RubberduckServer {
       }
     );
 
-    this.stateManager = new StateManager();
+    this.stateManager = new StateManager(isServer);
     this.clarifyTool = new ClarifyTool(this.stateManager);
     this.yapTool = new YapTool(this.stateManager);
 
@@ -70,20 +70,7 @@ class RubberduckServer {
           case 'yap':
             const yapResult = await this.yapTool.execute(args as YapToolArgs);
             
-            // If CLI is running, also display the yap there
-            if (this.cliInterface && args) {
-              const yapArgs = args as YapToolArgs;
-              const yap = {
-                id: Math.random().toString(36).substring(7),
-                message: yapArgs.message,
-                mode: yapArgs.mode || 'concise',
-                category: yapArgs.category || 'neutral',
-                task_context: yapArgs.task_context,
-                timestamp: Date.now()
-              };
-              // Display yap in CLI interface
-              this.cliInterface.displayYap(yap);
-            }
+            // Yap will be automatically displayed in CLI via event emission
             
             return {
               content: [
@@ -175,7 +162,7 @@ async function main() {
     .command('start')
     .description('Start the MCP server')
     .action(async () => {
-      const server = new RubberduckServer();
+      const server = new RubberduckServer(true); // Mark as server mode
       await server.start();
     });
 

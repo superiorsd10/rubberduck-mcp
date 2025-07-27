@@ -84,7 +84,8 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
-/tmp/rubberduck-state.json
+/tmp/rubberduck-messages.json
+/tmp/rubberduck-responses.json
 
 # Claude Code directory
 .claude/

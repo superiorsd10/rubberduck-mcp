@@ -9,7 +9,7 @@ export class CLIInterface {
   private isRunning: boolean = false;
   private rl: readline.Interface;
   private currentClarification: ClarificationRequest | null = null;
-  private seenYapIds: Set<string> = new Set();
+  private displayedYapIds: Set<string> = new Set();
 
   constructor(stateManager: StateManager) {
     this.stateManager = stateManager;
@@ -30,11 +30,14 @@ export class CLIInterface {
     console.log(chalk.dim('Press Ctrl+C to exit'));
     console.log('─'.repeat(60));
     
+    // Initialize state manager for CLI mode
+    await this.stateManager.initialize();
+    
     // Set up input handling
     this.setupInputHandler();
     
-    // Start the main loop
-    this.startMainLoop();
+    // Set up event listeners
+    this.setupEventListeners();
     
     console.log(chalk.green('🦆 Rubberduck started! Waiting for LLM interactions...'));
   }
@@ -53,76 +56,63 @@ export class CLIInterface {
     });
   }
 
-  private startMainLoop(): void {
-    const checkForUpdates = async () => {
-      if (!this.isRunning) return;
+  // Message queue handles cross-process communication
 
-      try {
-        // Check for pending clarifications
-        await this.checkPendingClarifications();
-        
-        // Check for new yaps
-        await this.checkNewYaps();
-        
-      } catch (error) {
-        console.error(chalk.red('Error:'), error);
-      }
+  private setupEventListeners(): void {
+    // Listen for events from message queue (cross-process)
+    this.stateManager.on('clarificationAdded', (clarification: ClarificationRequest) => {
+      this.showClarification(clarification);
+    });
 
-      // Schedule next check
-      if (this.isRunning) {
-        setTimeout(checkForUpdates, this.stateManager.getSettings().cliRefreshRate);
-      }
-    };
-
-    // Start the loop
-    setTimeout(checkForUpdates, 500);
+    this.stateManager.on('yapAdded', (yap: YapMessage) => {
+      this.displayYap(yap);
+    });
   }
 
-  private async checkPendingClarifications(): Promise<void> {
-    const pending = await this.stateManager.getPendingClarifications();
+  private checkExistingPendingClarifications(): void {
+    const pending = this.stateManager.getPendingClarifications();
     
     if (pending.length > 0 && !this.currentClarification) {
       // Show the highest priority clarification
-      const clarification = pending[0];
-      this.currentClarification = clarification;
-      
-      console.log('\\n' + '═'.repeat(60));
-      console.log(chalk.yellow.bold('❓ CLARIFICATION NEEDED'));
-      console.log('═'.repeat(60));
-      console.log(chalk.bold('Question:'), clarification.question);
-      
-      if (clarification.context) {
-        console.log(chalk.bold('Context:'), clarification.context);
-      }
-      
-      const urgencyColor = clarification.urgency === 'high' ? 'red' : 
-                          clarification.urgency === 'medium' ? 'yellow' : 'green';
-      console.log(chalk.bold('Urgency:'), chalk[urgencyColor](clarification.urgency.toUpperCase()));
-      console.log('─'.repeat(60));
-      console.log(chalk.green('Please type your response and press Enter:'));
-      this.rl.setPrompt(chalk.cyan('> '));
-      this.rl.prompt();
+      this.showClarification(pending[0]);
     }
   }
 
-  private async checkNewYaps(): Promise<void> {
-    const recentYaps = await this.stateManager.getRecentYaps(50); // Check more yaps to catch any we missed
-    
-    // Filter out yaps we've already seen
-    const newYaps = recentYaps.filter(yap => !this.seenYapIds.has(yap.id));
-    
-    if (newYaps.length > 0) {
-      // Sort by timestamp to show in correct order
-      newYaps.sort((a, b) => a.timestamp - b.timestamp);
-      
-      for (const yap of newYaps) {
-        this.displayYap(yap);
-        this.seenYapIds.add(yap.id);
-      }
+  private showClarification(clarification: ClarificationRequest): void {
+    if (this.currentClarification) {
+      return; // Already showing a clarification
     }
+
+    this.currentClarification = clarification;
+    
+    console.log('\\n' + '═'.repeat(60));
+    console.log(chalk.yellow.bold('❓ CLARIFICATION NEEDED'));
+    console.log('═'.repeat(60));
+    console.log(chalk.bold('Question:'), clarification.question);
+    
+    if (clarification.context) {
+      console.log(chalk.bold('Context:'), clarification.context);
+    }
+    
+    const urgencyColor = clarification.urgency === 'high' ? 'red' : 
+                        clarification.urgency === 'medium' ? 'yellow' : 'green';
+    console.log(chalk.bold('Urgency:'), chalk[urgencyColor](clarification.urgency.toUpperCase()));
+    console.log('─'.repeat(60));
+    console.log(chalk.green('Please type your response and press Enter:'));
+    this.rl.setPrompt(chalk.cyan('> '));
+    this.rl.prompt();
   }
+
+  // Event-driven yap display - no need to check for new yaps
 
   displayYap(yap: YapMessage): void {
+    // Deduplicate - only show each yap ID once
+    if (this.displayedYapIds.has(yap.id)) {
+      return;
+    }
+    
+    this.displayedYapIds.add(yap.id);
+    
     const categoryEmoji = this.getCategoryEmoji(yap.category);
     const timestamp = new Date(yap.timestamp).toLocaleTimeString();
     
@@ -141,14 +131,15 @@ export class CLIInterface {
   }
 
   private async handleClarificationResponse(requestId: string, response: string): Promise<void> {
-    const success = await this.stateManager.answerClarification(requestId, response);
-    
-    if (success) {
+    try {
+      // Send response directly to message queue (CLI doesn't manage clarifications locally)
+      await this.stateManager.sendClarificationResponse(requestId, response);
+      
       console.log(chalk.green(`✅ Response sent: "${response}"`));
       console.log('─'.repeat(60));
       console.log(chalk.gray('Waiting for more interactions...'));
-    } else {
-      console.log(chalk.red('❌ Failed to send response (clarification may have timed out)'));
+    } catch (error) {
+      console.log(chalk.red(`❌ Error sending response: ${error}`));
     }
   }
 
@@ -165,6 +156,7 @@ export class CLIInterface {
 
   stop(): void {
     this.isRunning = false;
+    
     console.log('\\n' + chalk.yellow('👋 Goodbye!'));
     this.rl.close();
     process.exit(0);
