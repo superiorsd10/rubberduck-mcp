@@ -1,0 +1,23 @@
+#!/usr/bin/env node
+
+const { spawn } = require('child_process');
+const path = require('path');
+
+// Determine if we're running from source or built
+const isBuilt = require('fs').existsSync(path.join(__dirname, '../dist/server.js'));
+const scriptPath = isBuilt 
+  ? path.join(__dirname, '../dist/server.js')
+  : path.join(__dirname, '../src/server.ts');
+
+const command = isBuilt ? 'node' : 'npx';
+const args = isBuilt ? [scriptPath] : ['tsx', scriptPath];
+
+// Forward all arguments to the main script
+const child = spawn(command, [...args, ...process.argv.slice(2)], {
+  stdio: 'inherit',
+  env: process.env
+});
+
+child.on('exit', (code) => {
+  process.exit(code || 0);
+});

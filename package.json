@@ -1,0 +1,43 @@
+{
+  "name": "rubberduck",
+  "version": "1.0.0",
+  "description": "MCP tool enabling bidirectional communication between LLMs and humans through clarification requests and real-time thought sharing",
+  "main": "dist/server.js",
+  "bin": {
+    "rubberduck": "./bin/rubberduck"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx src/server.ts",
+    "start": "node dist/server.js",
+    "clean": "rm -rf dist",
+    "prepare": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "ai",
+    "collaboration",
+    "coding-assistant",
+    "clarification",
+    "thought-sharing"
+  ],
+  "author": "rubberduck",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.7",
+    "tsx": "^4.7.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
