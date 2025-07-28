@@ -49,11 +49,6 @@ export class BrokerClient extends EventEmitter {
         this.isConnected = true;
         this.reconnectAttempts = 0;
         
-        await logInfo('Connected to message broker', {
-          clientId: this.config.clientId,
-          clientType: this.config.clientType,
-          brokerPort: this.config.port
-        });
 
         // Register with broker
         await this.register();

@@ -21,14 +21,12 @@ export const RUBBERDUCK_ASCII = `
 `;
 
 export const RUBBERDUCK_SIMPLE = `
-           _    _
-         /  \\__/  \\
-        (  o     o  )
-         \\    ^    /
-          |  ___  |
-          \\______/
-           ~~~~~~
-      🦆 RUBBERDUCK 🦆
+  ___ _   _ ___ ___ ___ ___ ___  _   _  ___ _  __
+ | _ \\ | | | _ ) _ ) __| _ \\   \\| | | |/ __| |/ /
+ |   / |_| | _ \\ _ \\ _||   / |) | |_| | (__| ' < 
+ |_|_\\\\___/|___/___/___|_|_\\___/ \\___/ \\___|_|\\_\\
+                                                
+                🦆 MCP Collaboration Tool
 `;
 
 export function getWelcomeMessage(): string {

@@ -3,7 +3,6 @@ import readline from 'readline';
 import { StateManager } from '../state/manager';
 import { getWelcomeMessage, RUBBERDUCK_SIMPLE } from './ascii-art';
 import { ClarificationRequest, YapMessage } from '../types/index';
-import { logError, logInfo, logWarn } from '../utils/logger';
 
 interface ExtendedClarificationRequest extends ClarificationRequest {
   sourceClientId?: string;
@@ -180,10 +179,6 @@ export class CLIInterface {
       this.processNextClarification();
       
     } catch (error) {
-      await logError('Error sending clarification response', error as Error, {
-        requestId: requestId,
-        response: response
-      });
       console.log(chalk.red(`❌ Error sending response: ${error instanceof Error ? error.message : 'Unknown error'}`));
       console.log(chalk.yellow('💡 Try restarting the CLI or check if the server is running'));
     }

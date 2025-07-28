@@ -42,10 +42,6 @@ export class StateManager extends EventEmitter {
 
   async initialize(): Promise<void> {
     try {
-      await logInfo(`Initializing StateManager`, { 
-        sessionId: this.sessionId, 
-        isServer: this.isServer 
-      });
       
       if (this.isServer) {
         await this.messageQueue.startServer();
@@ -65,7 +61,6 @@ export class StateManager extends EventEmitter {
           this.emit('yapAdded', yap);
         });
         
-        await logInfo('CLI interface initialized successfully');
       }
     } catch (error) {
       await logError('Failed to initialize StateManager', error as Error, {
