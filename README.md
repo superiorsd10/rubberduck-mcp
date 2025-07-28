@@ -1,21 +1,33 @@
 # 🦆 Rubberduck
 
-An MCP (Model Context Protocol) tool that enables bidirectional communication between LLMs and humans through clarification requests and real-time thought sharing.
+An MCP (Model Context Protocol) tool that enables bidirectional communication between LLMs and humans through clarification requests and real-time thought sharing. **Features a high-performance TCP-based message broker architecture for multi-agent collaboration.**
 
 ## Features
 
 ### 🤔 Clarification Tool
 - LLMs can ask for human clarification when confused
-- Questions appear in a beautiful CLI interface
+- Questions appear in a beautiful CLI interface with queuing support
+- Multiple agents can send clarifications simultaneously (processed sequentially)
 - Humans respond directly, and LLMs get the answers
 - Urgency levels: low, medium, high
 - Timeout handling for unanswered questions
+- Client ID display shows which agent sent each question
 
 ### 💭 Yap Tool  
 - LLMs can share their thoughts while coding (like humans do!)
 - Configurable modes: concise, verbose, detailed
 - Personality categories: funny, roasty, happy, neutral, excited
-- Real-time display in CLI interface
+- Real-time display in CLI interface with timestamp ordering
+- Multi-agent support with client identification
+- Messages displayed in chronological order across all agents
+
+### 🚀 Multi-Agent Architecture
+- **TCP Message Broker**: High-performance real-time communication (no file polling)
+- **Automatic Broker Management**: First MCP server starts broker, others connect seamlessly
+- **Clarification Queuing**: Sequential processing with "X more queued" status
+- **Message Ordering**: Timestamp-based yap ordering across multiple agents
+- **Load Balancing**: Distributes clarifications across multiple CLIs
+- **Client Identification**: Every message shows source agent ID
 
 ## Installation
 
@@ -30,15 +42,44 @@ npm install
 npm run build
 ```
 
-## Usage
+## Quick Start
 
-### 1. Start CLI Interface (Human Side)
+### Simple Setup (Single Agent)
 ```bash
-# Start the CLI interface for human interaction
+# Terminal 1: Start MCP server (auto-starts broker)
+./bin/rubberduck start
+
+# Terminal 2: Start CLI interface
 ./bin/rubberduck cli
+
+# Configure your MCP client (see MCP Client Configuration below)
 ```
 
-### 2. Configure MCP Client
+### Multi-Agent Setup (Multiple IDEs)
+```bash
+# Terminal 1: Start first MCP server (auto-starts broker)
+./bin/rubberduck start
+
+# Terminal 2: Start CLI to monitor all agents
+./bin/rubberduck cli
+
+# IDE 1: Start additional MCP server (connects to existing broker)
+./bin/rubberduck start
+
+# IDE 2: Start another MCP server 
+./bin/rubberduck start
+
+# All agents now communicate through the shared broker!
+```
+
+### Development Mode
+```bash
+# Start MCP server and CLI together
+./bin/rubberduck serve
+```
+
+## MCP Client Configuration
+
 Add rubberduck to your MCP client configuration:
 
 **For Claude Desktop** (`claude_desktop_config.json`):
@@ -53,9 +94,12 @@ Add rubberduck to your MCP client configuration:
 }
 ```
 
-### 3. Use from LLM/Coding Agent
+**For Multiple IDEs:**
+Each IDE can use the same configuration. The first IDE to start will launch the broker automatically; subsequent IDEs will connect to the existing broker.
 
-**Clarification Tool:**
+## Usage Examples
+
+### Clarification Tool
 ```typescript
 clarify({
   question: "What specific error handling approach do you prefer for this API?",
@@ -64,15 +108,64 @@ clarify({
 })
 ```
 
-**Yap Tool:**
+**Multi-Agent Scenario:**
+- Agent A asks clarification → Shows immediately in CLI
+- Agent B asks clarification → Queues with "1 more queued" status  
+- Human answers Agent A → CLI automatically shows Agent B's question
+- Agent B gets response → Queue empty
+
+### Yap Tool
 ```typescript
 yap({
   message: "This recursive function is getting complex, might need to refactor",
-  mode: "verbose",
+  mode: "verbose", 
   category: "neutral",
   task_context: "Implementing tree traversal algorithm"
 })
 ```
+
+**Multi-Agent Display:**
+```
+💭 LLM YAP [10:30:01] [MCP-Server-abc123]
+🚀 DETAILED: Starting authentication implementation!
+
+💭 LLM YAP [10:30:02] [MCP-Server-def456] 
+💭 CONCISE: Analyzing package.json structure
+
+💭 LLM YAP [10:30:03] [MCP-Server-abc123]
+😊 VERBOSE: Authentication flow looks good, moving to testing
+```
+
+## Architecture
+
+### High-Level Overview
+```
+Multiple IDEs/Agents → Multiple MCP Servers → TCP Message Broker → CLI(s)
+                                                     ↓
+                              Real-time message routing with queuing & ordering
+```
+
+### Core Components
+- **TCP Message Broker** (`src/broker/`): Central communication hub on port 8765
+- **MCP Server Layer** (`src/server.ts`): Implements MCP protocol, registers tools
+- **State Management** (`src/state/`): Connects to broker, manages local state
+- **CLI Interface** (`src/cli/`): Human-facing terminal UI with multi-client support
+- **Tools** (`src/tools/`): Implementation of clarify and yap tools
+
+### Communication Flow
+1. **Multiple Agents** → Send clarifications/yaps to their MCP servers
+2. **MCP Servers** → Forward messages to shared TCP broker
+3. **Message Broker** → Routes messages with proper queuing/ordering
+4. **CLI(s)** → Display messages with client identification
+5. **Human Responses** → Route back to specific waiting agent
+
+### TCP Broker Features
+- **Auto-Start**: First `./bin/rubberduck start` launches broker automatically
+- **Race-Safe**: Multiple simultaneous starts won't conflict
+- **Load Balancing**: Distributes clarifications across multiple CLIs
+- **Message Ordering**: 200ms timestamp buffering for chronological yap display
+- **Reconnection**: Auto-retry with exponential backoff for network failures
+- **Health Monitoring**: Heartbeat system with graceful client disconnect handling
 
 ## Development Commands
 
@@ -82,44 +175,11 @@ npm run dev        # Development mode with tsx
 npm start          # Start built MCP server 
 npm run clean      # Clean build artifacts
 
+./bin/rubberduck start  # Start MCP server (auto-starts broker if needed)
 ./bin/rubberduck cli    # Start CLI interface for human interaction
-./bin/rubberduck start  # Start MCP server for client connections
-./bin/rubberduck serve  # Start both server and CLI (experimental)
+./bin/rubberduck serve  # Start MCP server and CLI together (dev mode)
+./bin/rubberduck broker # Start standalone broker (advanced usage)
 ```
-
-## Project Structure
-
-```
-rubberduck/
-├── src/
-│   ├── server.ts          # Main MCP server
-│   ├── cli/
-│   │   ├── interface.ts   # CLI interface
-│   │   └── ascii-art.ts   # ASCII art and visuals
-│   ├── tools/
-│   │   ├── clarify.ts     # Clarification tool
-│   │   └── yap.ts         # Yap tool
-│   ├── state/
-│   │   └── manager.ts     # State management
-│   └── types/
-│       └── index.ts       # TypeScript interfaces
-├── bin/
-│   └── rubberduck         # Executable entry point
-└── dist/                  # Compiled JavaScript
-```
-
-## Architecture
-
-### Core Components
-- **MCP Server Layer** (`src/server.ts`): Implements MCP protocol, registers tools, handles JSON-RPC requests
-- **State Management Layer** (`src/state/manager.ts`): In-memory state management with EventEmitter for real-time communication
-- **CLI Interface Layer** (`src/cli/interface.ts`): Human-facing terminal UI with colored output and event-driven updates
-- **Tools** (`src/tools/`): Implementation of clarify and yap tools
-
-### Communication Flow
-1. LLM calls tool → Server processes → StateManager updates in-memory state
-2. StateManager emits events → CLI receives events and displays in real-time
-3. Human responds → StateManager updates state → Server returns response to LLM
 
 ## Tool Schemas
 
@@ -161,24 +221,36 @@ rubberduck/
 - Run `npm install` to install dependencies
 - Check TypeScript compilation with `npm run build`
 
-### CLI Not Showing Messages
-- Make sure the CLI is running (`./bin/rubberduck cli`)
-- Check that state files are being created in `/tmp/rubberduck-state.json`
-- Verify MCP server is properly configured in your client
+### Broker Connection Issues
+- **Error: "Cannot connect to message broker"**: Start an MCP server first with `./bin/rubberduck start`
+- **Port already in use**: Another broker is running; use existing one or restart
+- **Connection timeout**: Check if port 8765 is blocked by firewall
 
-### MCP Client Connection Issues
-- Ensure the path to `dist/server.js` is correct in your MCP client config
-- Check that the server starts without errors: `npm start`
+### CLI Not Showing Messages
+- Make sure an MCP server is running first (`./bin/rubberduck start`)
+- Start CLI after MCP server (`./bin/rubberduck cli`)
+- Check broker connection status in CLI
+
+### Multi-Agent Issues
+- **Messages out of order**: System uses 200ms buffering - slight delays are normal
+- **Clarifications not queuing**: Only one clarification shown at a time by design
+- **Missing client IDs**: Ensure each MCP server has unique session ID
+
+### MCP Client Configuration Issues
+- Ensure the path to `dist/server.js` is absolute and correct
+- Check that the server starts without errors: `./bin/rubberduck start`
 - Look for error messages in your MCP client logs
+- For multiple IDEs, each should use the same configuration
 
 ## Contributing
 
-This is a simple, first-principles implementation. Feel free to enhance with:
-- Better error handling
-- WebSocket support for real-time communication
-- Multiple LLM session support
-- Advanced CLI features
+This project implements a sophisticated multi-agent communication system. Areas for enhancement:
+- WebSocket support for even lower latency
+- Message persistence across broker restarts  
+- Advanced CLI features (filtering, search, history)
 - Configuration file support
+- Metrics and monitoring
+- Authentication and authorization
 
 ## License
 

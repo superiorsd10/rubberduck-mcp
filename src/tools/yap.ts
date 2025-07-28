@@ -1,6 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { StateManager } from '../state/manager';
 import { YapToolArgs, YapMessage } from '../types/index';
+import { logError, logInfo } from '../utils/logger';
 
 export class YapTool {
   private stateManager: StateManager;
@@ -69,7 +70,11 @@ export class YapTool {
       return `${confirmationEmoji} Yap shared! The human can see your ${category} ${mode} thought.`;
 
     } catch (error) {
-      console.error('Error in yap tool:', error);
+      await logError('Error in yap tool', error as Error, {
+        message: message,
+        mode: mode,
+        category: category
+      });
       return `❌ Error sharing yap: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }

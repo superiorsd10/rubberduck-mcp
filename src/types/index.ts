@@ -18,6 +18,7 @@ export interface YapMessage {
 }
 
 export interface RubberduckState {
+  sessionId: string;
   clarifications: Record<string, ClarificationRequest>;
   yaps: YapMessage[];
   settings: RubberduckSettings;

@@ -84,8 +84,9 @@ Thumbs.db
 # Temporary files
 tmp/
 temp/
-/tmp/rubberduck-messages.json
-/tmp/rubberduck-responses.json
+
+# Legacy file-based IPC files (no longer used since TCP broker refactor)
+/tmp/rubberduck-*.json
 
 # Claude Code directory
 .claude/

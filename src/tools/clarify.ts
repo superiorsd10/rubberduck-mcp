@@ -1,6 +1,7 @@
 import { Tool } from '@modelcontextprotocol/sdk/types.js';
 import { StateManager } from '../state/manager';
 import { ClarifyToolArgs } from '../types/index';
+import { logError, logInfo } from '../utils/logger';
 
 export class ClarifyTool {
   private stateManager: StateManager;
@@ -60,7 +61,10 @@ export class ClarifyTool {
       return `✅ Human Response: ${response}`;
 
     } catch (error) {
-      console.error('Error in clarify tool:', error);
+      await logError('Error in clarify tool', error as Error, {
+        question: args.question,
+        urgency: args.urgency
+      });
       return `❌ Error processing clarification request: ${error instanceof Error ? error.message : 'Unknown error'}`;
     }
   }

@@ -1,6 +1,7 @@
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageQueue } from './message-queue';
+import { initializeLogger, logError, logInfo, logWarn } from '../utils/logger';
 import { 
   RubberduckState, 
   ClarificationRequest, 
@@ -20,12 +21,19 @@ export class StateManager extends EventEmitter {
   private state: RubberduckState;
   private messageQueue: MessageQueue;
   private isServer: boolean;
+  private sessionId: string;
 
-  constructor(isServer: boolean = false) {
+  constructor(isServer: boolean = false, sessionId?: string) {
     super();
     this.isServer = isServer;
-    this.messageQueue = new MessageQueue();
+    this.sessionId = sessionId || uuidv4();
+    
+    // Initialize logger for this session
+    initializeLogger(this.sessionId);
+    
+    this.messageQueue = new MessageQueue(this.sessionId);
     this.state = {
+      sessionId: this.sessionId,
       clarifications: {},
       yaps: [],
       settings: DEFAULT_SETTINGS
@@ -33,22 +41,38 @@ export class StateManager extends EventEmitter {
   }
 
   async initialize(): Promise<void> {
-    if (this.isServer) {
-      await this.messageQueue.startServer();
-    } else {
-      await this.messageQueue.startCLI();
-      
-      // Remove any existing listeners to prevent duplicates
-      this.messageQueue.removeAllListeners('clarificationAdded');
-      this.messageQueue.removeAllListeners('yapAdded');
-      
-      // Set up event forwarding from message queue
-      this.messageQueue.on('clarificationAdded', (clarification) => {
-        this.emit('clarificationAdded', clarification);
+    try {
+      await logInfo(`Initializing StateManager`, { 
+        sessionId: this.sessionId, 
+        isServer: this.isServer 
       });
-      this.messageQueue.on('yapAdded', (yap) => {
-        this.emit('yapAdded', yap);
+      
+      if (this.isServer) {
+        await this.messageQueue.startServer();
+        await logInfo('MCP server initialized successfully');
+      } else {
+        await this.messageQueue.startCLI();
+        
+        // Remove any existing listeners to prevent duplicates
+        this.messageQueue.removeAllListeners('clarificationAdded');
+        this.messageQueue.removeAllListeners('yapAdded');
+        
+        // Set up event forwarding from message queue
+        this.messageQueue.on('clarificationAdded', (clarification) => {
+          this.emit('clarificationAdded', clarification);
+        });
+        this.messageQueue.on('yapAdded', (yap) => {
+          this.emit('yapAdded', yap);
+        });
+        
+        await logInfo('CLI interface initialized successfully');
+      }
+    } catch (error) {
+      await logError('Failed to initialize StateManager', error as Error, {
+        sessionId: this.sessionId,
+        isServer: this.isServer
       });
+      throw error;
     }
   }
 
@@ -171,6 +195,21 @@ export class StateManager extends EventEmitter {
 
   getSettings(): RubberduckSettings {
     return { ...this.state.settings };
+  }
+
+  getSessionId(): string {
+    return this.sessionId;
+  }
+
+  async checkConnectionHealth(): Promise<{
+    isConnected: boolean;
+    lastSeen?: number;
+  }> {
+    const status = this.messageQueue.getConnectionStatus();
+    return {
+      isConnected: status.isConnected,
+      lastSeen: Date.now() // Simplified - broker handles connection timing
+    };
   }
 
   // Cleanup methods

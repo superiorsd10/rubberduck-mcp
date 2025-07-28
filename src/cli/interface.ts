@@ -3,13 +3,24 @@ import readline from 'readline';
 import { StateManager } from '../state/manager';
 import { getWelcomeMessage, RUBBERDUCK_SIMPLE } from './ascii-art';
 import { ClarificationRequest, YapMessage } from '../types/index';
+import { logError, logInfo, logWarn } from '../utils/logger';
+
+interface ExtendedClarificationRequest extends ClarificationRequest {
+  sourceClientId?: string;
+}
+
+interface ExtendedYapMessage extends YapMessage {
+  sourceClientId?: string;
+}
 
 export class CLIInterface {
   private stateManager: StateManager;
   private isRunning: boolean = false;
   private rl: readline.Interface;
-  private currentClarification: ClarificationRequest | null = null;
+  private clarificationQueue: ExtendedClarificationRequest[] = [];
+  private currentClarification: ExtendedClarificationRequest | null = null;
   private displayedYapIds: Set<string> = new Set();
+  private connectionCheckInterval: NodeJS.Timeout | null = null;
 
   constructor(stateManager: StateManager) {
     this.stateManager = stateManager;
@@ -27,6 +38,7 @@ export class CLIInterface {
     console.log(chalk.yellow(RUBBERDUCK_SIMPLE));
     console.log(chalk.cyan('🤖 MCP Tool for LLM-Human Collaboration'));
     console.log(chalk.gray('Ready to help with clarifications and yapping!'));
+    console.log(chalk.dim(`Session ID: ${this.stateManager.getSessionId()}`));
     console.log(chalk.dim('Press Ctrl+C to exit'));
     console.log('─'.repeat(60));
     
@@ -39,6 +51,9 @@ export class CLIInterface {
     // Set up event listeners
     this.setupEventListeners();
     
+    // Start connection monitoring
+    this.startConnectionMonitoring();
+    
     console.log(chalk.green('🦆 Rubberduck started! Waiting for LLM interactions...'));
   }
 
@@ -47,7 +62,6 @@ export class CLIInterface {
       const response = input.trim();
       if (response && this.currentClarification) {
         await this.handleClarificationResponse(this.currentClarification.id, response);
-        this.currentClarification = null;
       }
     });
 
@@ -56,38 +70,60 @@ export class CLIInterface {
     });
   }
 
-  // Message queue handles cross-process communication
-
   private setupEventListeners(): void {
     // Listen for events from message queue (cross-process)
-    this.stateManager.on('clarificationAdded', (clarification: ClarificationRequest) => {
-      this.showClarification(clarification);
+    this.stateManager.on('clarificationAdded', (clarification: ExtendedClarificationRequest) => {
+      this.enqueueClarification(clarification);
     });
 
-    this.stateManager.on('yapAdded', (yap: YapMessage) => {
+    this.stateManager.on('yapAdded', (yap: ExtendedYapMessage) => {
       this.displayYap(yap);
     });
   }
 
-  private checkExistingPendingClarifications(): void {
-    const pending = this.stateManager.getPendingClarifications();
-    
-    if (pending.length > 0 && !this.currentClarification) {
-      // Show the highest priority clarification
-      this.showClarification(pending[0]);
+  private enqueueClarification(clarification: ExtendedClarificationRequest): void {
+    // Add to queue if not already processing one
+    if (!this.currentClarification) {
+      this.currentClarification = clarification;
+      this.showCurrentClarification();
+    } else {
+      this.clarificationQueue.push(clarification);
+      this.showClarificationQueueStatus();
     }
   }
 
-  private showClarification(clarification: ClarificationRequest): void {
-    if (this.currentClarification) {
-      return; // Already showing a clarification
+  private processNextClarification(): void {
+    if (this.clarificationQueue.length > 0) {
+      this.currentClarification = this.clarificationQueue.shift()!;
+      this.showCurrentClarification();
+    } else {
+      this.currentClarification = null;
+      console.log(chalk.gray('Waiting for more interactions...'));
     }
+  }
 
-    this.currentClarification = clarification;
+  private showClarificationQueueStatus(): void {
+    if (this.clarificationQueue.length > 0) {
+      console.log(chalk.yellow(`📋 ${this.clarificationQueue.length} clarification(s) queued`));
+    }
+  }
+
+  private showCurrentClarification(): void {
+    if (!this.currentClarification) return;
     
-    console.log('\\n' + '═'.repeat(60));
-    console.log(chalk.yellow.bold('❓ CLARIFICATION NEEDED'));
-    console.log('═'.repeat(60));
+    const clarification = this.currentClarification;
+    const queueInfo = this.clarificationQueue.length > 0 ? 
+      ` (${this.clarificationQueue.length} more queued)` : '';
+    
+    console.log('\n' + '═'.repeat(70));
+    console.log(chalk.yellow.bold(`❓ CLARIFICATION NEEDED${queueInfo}`));
+    
+    // Show source client ID if available
+    if (clarification.sourceClientId) {
+      console.log(chalk.dim(`Client: ${clarification.sourceClientId}`));
+    }
+    
+    console.log('═'.repeat(70));
     console.log(chalk.bold('Question:'), clarification.question);
     
     if (clarification.context) {
@@ -97,15 +133,13 @@ export class CLIInterface {
     const urgencyColor = clarification.urgency === 'high' ? 'red' : 
                         clarification.urgency === 'medium' ? 'yellow' : 'green';
     console.log(chalk.bold('Urgency:'), chalk[urgencyColor](clarification.urgency.toUpperCase()));
-    console.log('─'.repeat(60));
+    console.log('─'.repeat(70));
     console.log(chalk.green('Please type your response and press Enter:'));
     this.rl.setPrompt(chalk.cyan('> '));
     this.rl.prompt();
   }
 
-  // Event-driven yap display - no need to check for new yaps
-
-  displayYap(yap: YapMessage): void {
+  displayYap(yap: ExtendedYapMessage): void {
     // Deduplicate - only show each yap ID once
     if (this.displayedYapIds.has(yap.id)) {
       return;
@@ -116,8 +150,12 @@ export class CLIInterface {
     const categoryEmoji = this.getCategoryEmoji(yap.category);
     const timestamp = new Date(yap.timestamp).toLocaleTimeString();
     
-    console.log('\\n' + '─'.repeat(40));
-    console.log(chalk.blue.bold(`💭 LLM YAP [${timestamp}]`));
+    // Show client ID if available
+    const clientInfo = yap.sourceClientId ? 
+      chalk.dim(`[${yap.sourceClientId}] `) : '';
+    
+    console.log('\n' + '─'.repeat(50));
+    console.log(chalk.blue.bold(`💭 LLM YAP [${timestamp}] ${clientInfo}`));
     console.log(`${categoryEmoji} ${chalk.dim(yap.mode.toUpperCase())}: ${yap.message}`);
     
     if (yap.task_context) {
@@ -136,10 +174,18 @@ export class CLIInterface {
       await this.stateManager.sendClarificationResponse(requestId, response);
       
       console.log(chalk.green(`✅ Response sent: "${response}"`));
-      console.log('─'.repeat(60));
-      console.log(chalk.gray('Waiting for more interactions...'));
+      console.log('─'.repeat(70));
+      
+      // Process next clarification in queue
+      this.processNextClarification();
+      
     } catch (error) {
-      console.log(chalk.red(`❌ Error sending response: ${error}`));
+      await logError('Error sending clarification response', error as Error, {
+        requestId: requestId,
+        response: response
+      });
+      console.log(chalk.red(`❌ Error sending response: ${error instanceof Error ? error.message : 'Unknown error'}`));
+      console.log(chalk.yellow('💡 Try restarting the CLI or check if the server is running'));
     }
   }
 
@@ -154,10 +200,54 @@ export class CLIInterface {
     }
   }
 
+  private startConnectionMonitoring(): void {
+    // Check connection status every 10 seconds
+    this.connectionCheckInterval = setInterval(async () => {
+      await this.checkBrokerConnection();
+    }, 10000);
+    
+    // Initial check
+    setTimeout(async () => {
+      await this.checkBrokerConnection();
+    }, 2000); // Wait 2 seconds for broker to start
+  }
+
+  private lastConnectionStatus: boolean = false; // Start pessimistic
+  
+  private async checkBrokerConnection(): Promise<void> {
+    try {
+      const connectionStatus = await this.stateManager.checkConnectionHealth();
+      
+      // Only show messages when status changes to avoid spam
+      if (!connectionStatus.isConnected && this.lastConnectionStatus) {
+        console.log('\n' + chalk.red('⚠️  No active message broker connection. Check if server is running.'));
+        if (this.currentClarification) {
+          this.rl.setPrompt(chalk.cyan('> '));
+          this.rl.prompt();
+        }
+      } else if (connectionStatus.isConnected && !this.lastConnectionStatus) {
+        console.log('\n' + chalk.green('✅ Broker connection established!'));
+        if (this.currentClarification) {
+          this.rl.setPrompt(chalk.cyan('> '));
+          this.rl.prompt();
+        }
+      }
+      
+      this.lastConnectionStatus = connectionStatus.isConnected;
+    } catch (error) {
+      // Ignore connection check errors to avoid spam
+    }
+  }
+
   stop(): void {
     this.isRunning = false;
     
-    console.log('\\n' + chalk.yellow('👋 Goodbye!'));
+    if (this.connectionCheckInterval) {
+      clearInterval(this.connectionCheckInterval);
+      this.connectionCheckInterval = null;
+    }
+    
+    console.log('\n' + chalk.yellow('👋 Goodbye!'));
     this.rl.close();
     process.exit(0);
   }

@@ -1,187 +1,153 @@
-import { promises as fs } from 'fs';
 import { EventEmitter } from 'events';
+import { v4 as uuidv4 } from 'uuid';
 import { ClarificationRequest, YapMessage } from '../types/index';
-
-interface QueueMessage {
-  id: string;
-  type: 'clarification' | 'yap';
-  data: ClarificationRequest | YapMessage;
-  timestamp: number;
-}
+import { BrokerClient } from '../broker/broker-client';
+import { logError, logInfo, logWarn } from '../utils/logger';
 
 export class MessageQueue extends EventEmitter {
-  private queuePath: string;
+  private brokerClient: BrokerClient;
+  private sessionId: string;
   private isRunning: boolean = false;
-  private pollInterval: NodeJS.Timeout | null = null;
-  private lastReadTimestamp: number = 0;
-  private processedMessageIds: Set<string> = new Set();
+  private pendingResponses: Map<string, {
+    resolve: (response: string | null) => void;
+    timeout: NodeJS.Timeout;
+  }> = new Map();
 
-  constructor() {
+  constructor(sessionId: string) {
     super();
-    this.queuePath = '/tmp/rubberduck-messages.json';
+    this.sessionId = sessionId;
+    
+    // Create broker client with session-based client ID
+    this.brokerClient = new BrokerClient({
+      clientId: sessionId,
+      clientType: 'mcp-server',
+      host: 'localhost',
+      port: 8765
+    });
+    
+    this.setupBrokerEvents();
+  }
+
+  private setupBrokerEvents(): void {
+    this.brokerClient.on('connected', () => {
+      this.isRunning = true;
+      this.emit('connected');
+    });
+
+    this.brokerClient.on('disconnected', () => {
+      this.isRunning = false;
+      this.emit('disconnected');
+    });
+
+    this.brokerClient.on('clarification', (clarification: ClarificationRequest) => {
+      this.emit('clarificationAdded', clarification);
+    });
+
+    this.brokerClient.on('yap', (yap: YapMessage) => {
+      this.emit('yapAdded', yap);
+    });
+
+    this.brokerClient.on('error', async (error: string) => {
+      await logError('Broker client error', new Error(error), {
+        sessionId: this.sessionId
+      });
+    });
   }
 
   async startCLI(): Promise<void> {
-    // Clear the queue when CLI starts (fresh session)
-    await this.clearQueue();
-    this.lastReadTimestamp = Date.now();
-    this.processedMessageIds.clear();
-    this.startPolling();
+    // CLI mode - reconfigure broker client as CLI type
+    this.brokerClient = new BrokerClient({
+      clientId: this.sessionId,
+      clientType: 'cli',
+      host: 'localhost',
+      port: 8765
+    });
+    
+    this.setupBrokerEvents();
+    await this.brokerClient.connect();
   }
 
   async startServer(): Promise<void> {
-    // Server mode - don't clear queue, just ensure it exists
-    await this.ensureQueueExists();
-  }
-
-  private async ensureQueueExists(): Promise<void> {
-    try {
-      await fs.access(this.queuePath);
-    } catch {
-      await fs.writeFile(this.queuePath, JSON.stringify([]));
-    }
-  }
-
-  private async clearQueue(): Promise<void> {
-    await fs.writeFile(this.queuePath, JSON.stringify([]));
+    // Server mode - keep as MCP server type
+    await this.brokerClient.connect();
   }
 
   async addMessage(type: 'clarification' | 'yap', data: ClarificationRequest | YapMessage): Promise<void> {
-    await this.ensureQueueExists();
-    
     try {
-      const queueData = await fs.readFile(this.queuePath, 'utf-8');
-      const messages: QueueMessage[] = JSON.parse(queueData) || [];
-      
-      const message: QueueMessage = {
-        id: data.id,
-        type,
-        data,
-        timestamp: Date.now()
-      };
-      
-      messages.push(message);
-      
-      // Keep only last 50 messages to prevent growth
-      if (messages.length > 50) {
-        messages.splice(0, messages.length - 50);
-      }
-      
-      await fs.writeFile(this.queuePath, JSON.stringify(messages, null, 2));
-    } catch (error) {
-      console.error('Error adding message to queue:', error);
-    }
-  }
-
-  private startPolling(): void {
-    if (this.isRunning) return;
-    
-    this.isRunning = true;
-    this.pollInterval = setInterval(async () => {
-      await this.checkForNewMessages();
-    }, 200); // Poll every 200ms for responsiveness
-  }
-
-  private async checkForNewMessages(): Promise<void> {
-    try {
-      const queueData = await fs.readFile(this.queuePath, 'utf-8');
-      const messages: QueueMessage[] = JSON.parse(queueData) || [];
-      
-      // Get only new messages since last read AND not already processed
-      const newMessages = messages.filter(msg => 
-        msg.timestamp > this.lastReadTimestamp && 
-        !this.processedMessageIds.has(msg.id)
-      );
-      
-      if (newMessages.length > 0) {
-        // Update last read timestamp
-        this.lastReadTimestamp = Math.max(...newMessages.map(m => m.timestamp));
-        
-        // Emit events for new messages
-        for (const message of newMessages) {
-          // Mark as processed to prevent duplicates
-          this.processedMessageIds.add(message.id);
-          
-          if (message.type === 'clarification') {
-            this.emit('clarificationAdded', message.data);
-          } else if (message.type === 'yap') {
-            this.emit('yapAdded', message.data);
-          }
-        }
+      if (type === 'clarification') {
+        await this.brokerClient.sendClarification(data);
+      } else if (type === 'yap') {
+        await this.brokerClient.sendYap(data);
       }
     } catch (error) {
-      // Queue file might not exist yet - ignore
+      await logError('Error sending message to broker', error as Error, {
+        sessionId: this.sessionId,
+        messageType: type,
+        messageId: data.id
+      });
+      throw error;
     }
   }
 
   async sendClarificationResponse(id: string, response: string): Promise<void> {
-    // Write response to a separate response file
-    const responsePath = '/tmp/rubberduck-responses.json';
-    
     try {
-      let responses: Record<string, string> = {};
-      try {
-        const responseData = await fs.readFile(responsePath, 'utf-8');
-        responses = JSON.parse(responseData) || {};
-      } catch {
-        // File doesn't exist yet
-      }
-      
-      responses[id] = response;
-      await fs.writeFile(responsePath, JSON.stringify(responses, null, 2));
+      await this.brokerClient.sendResponse(id, response);
     } catch (error) {
-      console.error('Error sending clarification response:', error);
+      await logError('Error sending clarification response to broker', error as Error, {
+        sessionId: this.sessionId,
+        clarificationId: id
+      });
+      throw error;
     }
   }
 
   async waitForResponse(id: string, timeoutMs: number): Promise<string | null> {
-    const responsePath = '/tmp/rubberduck-responses.json';
-    const startTime = Date.now();
-    
-    while (Date.now() - startTime < timeoutMs) {
-      try {
-        const responseData = await fs.readFile(responsePath, 'utf-8');
-        const responses: Record<string, string> = JSON.parse(responseData) || {};
-        
-        if (responses[id]) {
-          const response = responses[id];
-          // Clean up the response
-          delete responses[id];
-          await fs.writeFile(responsePath, JSON.stringify(responses, null, 2));
-          return response;
-        }
-      } catch {
-        // File doesn't exist yet
+    try {
+      const response = await this.brokerClient.waitForResponse(id, timeoutMs);
+      return response;
+    } catch (error) {
+      if (error instanceof Error && error.message === 'Response timeout') {
+        return null;
       }
       
-      // Wait 100ms before checking again
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await logError('Error waiting for response from broker', error as Error, {
+        sessionId: this.sessionId,
+        clarificationId: id
+      });
+      return null;
     }
-    
-    return null;
   }
 
   stop(): void {
     this.isRunning = false;
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-      this.pollInterval = null;
+    
+    // Clear pending responses
+    for (const [id, pending] of this.pendingResponses.entries()) {
+      clearTimeout(pending.timeout);
+      pending.resolve(null);
     }
-    this.processedMessageIds.clear();
+    this.pendingResponses.clear();
+    
     this.removeAllListeners();
   }
 
   async cleanup(): Promise<void> {
     this.stop();
+    
     try {
-      await fs.unlink(this.queuePath);
-    } catch {
-      // Ignore if file doesn't exist
+      await this.brokerClient.disconnect();
+    } catch (error) {
+      await logError('Error disconnecting from broker during cleanup', error as Error, {
+        sessionId: this.sessionId
+      });
     }
-    try {
-      await fs.unlink('/tmp/rubberduck-responses.json');
-    } catch {
-      // Ignore if file doesn't exist
-    }
+  }
+
+  getConnectionStatus(): {
+    isConnected: boolean;
+    clientId: string;
+    clientType: string;
+  } {
+    return this.brokerClient.getConnectionStatus();
   }
 }

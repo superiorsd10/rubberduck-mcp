@@ -9,6 +9,8 @@ import { CLIInterface } from './cli/interface';
 import { ClarifyTool } from './tools/clarify';
 import { YapTool } from './tools/yap';
 import { ClarifyToolArgs, YapToolArgs } from './types/index';
+import { BrokerManager } from './broker/broker-manager';
+import { logError, logInfo } from './utils/logger';
 
 class RubberduckServer {
   private server: Server;
@@ -16,6 +18,7 @@ class RubberduckServer {
   private cliInterface: CLIInterface | null = null;
   private clarifyTool: ClarifyTool;
   private yapTool: YapTool;
+  private startedBroker: boolean = false;
   private isCliMode: boolean = false;
 
   constructor(isServer: boolean = false) {
@@ -33,6 +36,8 @@ class RubberduckServer {
     );
 
     this.stateManager = new StateManager(isServer);
+    
+    // Broker will be managed automatically
     this.clarifyTool = new ClarifyTool(this.stateManager);
     this.yapTool = new YapTool(this.stateManager);
 
@@ -85,7 +90,10 @@ class RubberduckServer {
             throw new Error(`Unknown tool: ${name}`);
         }
       } catch (error) {
-        console.error('Error handling tool call:', error);
+        await logError('Error handling tool call', error as Error, {
+          toolName: request.params.name,
+          args: request.params.arguments
+        });
         return {
           content: [
             {
@@ -99,27 +107,45 @@ class RubberduckServer {
     });
 
     // Handle server errors
-    this.server.onerror = (error) => {
-      console.error('Server error:', error);
+    this.server.onerror = async (error) => {
+      await logError('Server error', error);
     };
 
     // Handle process signals
-    process.on('SIGINT', () => {
-      this.cleanup();
+    process.on('SIGINT', async () => {
+      await this.cleanup();
       process.exit(0);
     });
 
-    process.on('SIGTERM', () => {
-      this.cleanup();
+    process.on('SIGTERM', async () => {
+      await this.cleanup();
       process.exit(0);
     });
   }
 
-  async start(options: { cli?: boolean } = {}): Promise<void> {
+  async start(options: { cli?: boolean, startBroker?: boolean } = {}): Promise<void> {
     this.isCliMode = options.cli || false;
 
     try {
-      // Initialize state manager
+      // Auto-start broker if needed (unless we're just starting a CLI)
+      if (!this.isCliMode || options.startBroker) {
+        this.startedBroker = await BrokerManager.ensureBrokerRunning();
+        
+        if (this.startedBroker) {
+          // Small delay to ensure broker is fully ready
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      } else {
+        // For CLI mode, just wait for broker to be available
+        const brokerAvailable = await BrokerManager.waitForBroker(8765, 5000);
+        if (!brokerAvailable) {
+          throw new Error(
+            'No message broker found. Please start an MCP server first with: ./bin/rubberduck start'
+          );
+        }
+      }
+      
+      // Initialize state manager (will connect to existing broker)
       await this.stateManager.initialize();
 
       if (this.isCliMode) {
@@ -130,22 +156,46 @@ class RubberduckServer {
         // Start MCP server with stdio transport for MCP clients
         const transport = new StdioServerTransport();
         await this.server.connect(transport);
-        console.error('Rubberduck MCP server started and ready for connections');
+        await logInfo('Rubberduck MCP server started and ready for connections');
       }
 
     } catch (error) {
-      console.error('Failed to start server:', error);
+      await logError('Failed to start server', error as Error);
+      
+      // Clean up broker if we started it
+      if (this.startedBroker) {
+        try {
+          await BrokerManager.stopBroker();
+        } catch (cleanupError) {
+          await logError('Error stopping message broker during cleanup', cleanupError as Error);
+        }
+      }
+      
       process.exit(1);
     }
   }
 
-  private cleanup(): void {
+  private async cleanup(): Promise<void> {
     if (this.cliInterface) {
       this.cliInterface.stop();
     }
     
     // Clean up state manager
-    this.stateManager.cleanup().catch(console.error);
+    try {
+      await this.stateManager.cleanup();
+    } catch (error) {
+      await logError('Error cleaning up state manager', error as Error);
+    }
+    
+    // Clean up broker only if we started it
+    if (this.startedBroker) {
+      try {
+        await BrokerManager.stopBroker();
+        await logInfo('Message broker stopped');
+      } catch (error) {
+        await logError('Error stopping message broker', error as Error);
+      }
+    }
   }
 }
 
@@ -158,9 +208,37 @@ async function main() {
     .description('MCP tool for LLM-human collaboration')
     .version('1.0.0');
 
+  // Add usage information
+  program.addHelpText('before', `
+🦆 Rubberduck - LLM-Human Collaboration Tool
+
+Quick Start:
+  1. Start MCP server: ./bin/rubberduck start    (auto-starts broker)
+  2. Start CLI:        ./bin/rubberduck cli
+  3. Add more servers: ./bin/rubberduck start    (connects to existing broker)
+
+The first 'start' command automatically launches the message broker.
+`);
+
+  program
+    .command('broker')
+    .description('Start standalone message broker (advanced usage)')
+    .action(async () => {
+      const server = new RubberduckServer();
+      await server.start({ startBroker: true });
+      
+      // Keep the process alive
+      console.log('\n🔗 Message broker is running on port 8765');
+      console.log('📡 MCP servers and CLIs can now connect');
+      console.log('Press Ctrl+C to stop');
+      
+      // Prevent process from exiting
+      process.stdin.resume();
+    });
+
   program
     .command('start')
-    .description('Start the MCP server')
+    .description('Start MCP server (auto-starts broker if needed)')
     .action(async () => {
       const server = new RubberduckServer(true); // Mark as server mode
       await server.start();
@@ -169,7 +247,7 @@ async function main() {
   program
     .command('cli')
     .alias('ui')
-    .description('Start with CLI interface for human interaction')
+    .description('Start CLI interface (requires MCP server running)')
     .action(async () => {
       const server = new RubberduckServer();
       await server.start({ cli: true });
@@ -177,16 +255,18 @@ async function main() {
 
   program
     .command('serve')
-    .description('Start the MCP server and CLI interface together')
+    .description('Start MCP server and CLI together (dev mode)')
     .action(async () => {
-      // Start both server and CLI
-      console.log('🦆 Starting Rubberduck with both MCP server and CLI interface...');
+      console.log('🦆 Starting Rubberduck with MCP server and CLI interface...');
       
-      // Fork process for MCP server
+      // Fork process for MCP server (will auto-start broker)
       const { spawn } = await import('child_process');
       const serverProcess = spawn(process.execPath, [__filename, 'start'], {
         stdio: ['pipe', 'pipe', 'inherit']
       });
+      
+      // Wait a bit for broker to start
+      await new Promise(resolve => setTimeout(resolve, 1000));
 
       // Start CLI in main process
       const server = new RubberduckServer();
@@ -196,6 +276,7 @@ async function main() {
   // If no command specified, show help
   if (process.argv.length <= 2) {
     program.help();
+    return;
   }
 
   await program.parseAsync();
@@ -203,7 +284,10 @@ async function main() {
 
 // Only run main if this file is executed directly
 if (require.main === module) {
-  main().catch(console.error);
+  main().catch(async (error) => {
+    console.error('Fatal error:', error);
+    process.exit(1);
+  });
 }
 
 export { RubberduckServer };
