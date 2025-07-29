@@ -17,17 +17,27 @@ npm start
 # Clean build artifacts
 npm run clean
 
+# Prepare for distribution (runs build)
+npm run prepare
+
+# Prepare for npm publishing (clean + build)
+npm run prepublishOnly
+
 # Start MCP server (auto-starts broker if needed)
-./bin/rubberduck start
+npx rubberduck-mcp start
+# OR: ./bin/rubberduck start (local dev)
 
 # Start CLI interface for human interaction
-./bin/rubberduck cli
+npx rubberduck-mcp cli
+# OR: ./bin/rubberduck cli (local dev)
 
 # Start MCP server and CLI together (dev mode)
-./bin/rubberduck serve
+npx rubberduck-mcp serve
+# OR: ./bin/rubberduck serve (local dev)
 
 # Start standalone broker (advanced usage)
-./bin/rubberduck broker
+npx rubberduck-mcp broker
+# OR: ./bin/rubberduck broker (local dev)
 ```
 
 ## Architecture Overview
@@ -63,7 +73,7 @@ This is an MCP (Model Context Protocol) tool that enables bidirectional communic
 ### Critical TCP Broker Concepts
 
 **Automatic Broker Management:**
-- First `./bin/rubberduck start` command automatically starts broker on port 8765
+- First `npx rubberduck-mcp start` command automatically starts broker on port 8765
 - Subsequent `start` commands detect existing broker and connect as clients
 - Race condition safe - multiple simultaneous starts won't conflict
 - Broker shuts down when the process that started it exits
@@ -142,13 +152,13 @@ Urgency: MEDIUM
 ───────────────────────────────────────────────────────────
 ```
 
-**Yap Message Display with Client IDs:**
+**Yap Message Display with Client IDs (Simplified):**
 ```
 💭 LLM YAP [10:30:01] [MCP-Server-abc123]
-🚀 DETAILED: Starting authentication implementation!
+Starting authentication implementation!
 
 💭 LLM YAP [10:30:02] [MCP-Server-def456]
-💭 CONCISE: Analyzing package.json structure
+Analyzing package.json structure
 ```
 
 ### MCP Client Configuration
@@ -157,30 +167,58 @@ Urgency: MEDIUM
 ```json
 {
   "mcpServers": {
-    "rubberduck": {
-      "command": "node",
-      "args": ["/absolute/path/to/rubberduck/dist/server.js", "start"]
+    "rubberduck-mcp": {
+      "command": "npx",
+      "args": ["rubberduck-mcp", "start"]
     }
   }
 }
 ```
 
 **Multiple IDE Support:**
-Each IDE can start its own MCP server instance with `./bin/rubberduck start`. The first instance auto-starts the broker; subsequent instances connect to the existing broker.
+Each IDE can start its own MCP server instance with `npx rubberduck-mcp start`. The first instance auto-starts the broker; subsequent instances connect to the existing broker.
 
 ### Key Dependencies
 
 - `@modelcontextprotocol/sdk`: Core MCP implementation
 - `chalk`: Terminal colors and formatting for CLI
 - `commander`: CLI argument parsing
+- `figlet`: ASCII art for CLI welcome display
 - `uuid`: Unique ID generation for requests/messages/sessions
 - `net` (Node.js built-in): TCP socket communication for broker
 - Node.js 18+ required for MCP SDK compatibility
 
+### Tool Schemas
+
+**Clarify Tool:**
+```typescript
+{
+  name: "clarify",
+  inputSchema: {
+    question: string,      // Required: The question to ask
+    context?: string,      // Optional: Context about the confusion
+    urgency?: "low" | "medium" | "high"  // Optional: Priority level
+  }
+}
+```
+
+**Yap Tool:**
+```typescript
+{
+  name: "yap", 
+  inputSchema: {
+    message: string,       // Required: The thought to share
+    mode?: "concise" | "verbose" | "detailed",
+    category?: "funny" | "roasty" | "happy" | "neutral" | "excited",
+    task_context?: string  // Optional: What you're working on
+  }
+}
+```
+
 ### Error Handling Patterns
 
 **Broker Connection Failures:**
-- Clear error messages: "Cannot connect to message broker on port 8765. Please start the broker first with: ./bin/rubberduck broker"
+- Clear error messages: "Cannot connect to message broker on port 8765. Please start the broker first with: npx rubberduck-mcp broker"
 - Auto-retry with exponential backoff for temporary network issues
 - Graceful degradation when broker becomes unavailable
 
@@ -189,8 +227,31 @@ Each IDE can start its own MCP server instance with `./bin/rubberduck start`. Th
 - MCP server crash during clarification: Marks as "client disconnected" 
 - Multiple CLIs: Load balances new clarifications, broadcasts yaps to all
 
-## important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
+## Package Configuration
+
+The package is configured as **"rubberduck-mcp"** for npm distribution:
+- Binary name: `rubberduck-mcp`
+- NPX usage: `npx rubberduck-mcp start`
+- Global install: `npm install -g rubberduck-mcp`
+- Repository: `https://github.com/superiorsd10/rubberduck-mcp.git`
+
+## Important Implementation Notes
+
+**CLI Yap Display Changes:**
+- The CLI interface (`src/cli/interface.ts`) displays simplified yap messages
+- No category emojis or mode text shown to users
+- Format: `💭 LLM YAP [timestamp] [clientId] message`
+- The `getCategoryEmoji()` method has been removed
+
+**Publish Preparation:**
+- Use `npm run prepublishOnly` before publishing
+- Files included in package: `dist/`, `bin/`, `README.md`, `LICENSE`
+- Repository links point to superiorsd10/rubberduck-mcp
+
+## AI Agent Integration
+
+The system is designed for use with MCP-compatible AI coding tools. The recommended prompt for AI agents is:
+
+```
+You have access to two Rubberduck MCP tools: clarify() and yap(). Use clarify() when you're confused, need human input for ambiguous requirements, or aren't 100% confident about changes you're making - it will pause your work until you get a response. Use yap() to share your thoughts, emotions, feelings, progress updates, and insights while working for an engaging experience with the human - it's non-blocking and keeps humans informed of your thinking process. Use both tools proactively for better collaboration.
+```

@@ -146,7 +146,6 @@ export class CLIInterface {
     
     this.displayedYapIds.add(yap.id);
     
-    const categoryEmoji = this.getCategoryEmoji(yap.category);
     const timestamp = new Date(yap.timestamp).toLocaleTimeString();
     
     // Show client ID if available
@@ -155,7 +154,7 @@ export class CLIInterface {
     
     console.log('\n' + '─'.repeat(50));
     console.log(chalk.blue.bold(`💭 LLM YAP [${timestamp}] ${clientInfo}`));
-    console.log(`${categoryEmoji} ${chalk.dim(yap.mode.toUpperCase())}: ${yap.message}`);
+    console.log(yap.message);
     
     if (yap.task_context) {
       console.log(chalk.dim(`Context: ${yap.task_context}`));
@@ -184,16 +183,6 @@ export class CLIInterface {
     }
   }
 
-  private getCategoryEmoji(category: YapMessage['category']): string {
-    switch (category) {
-      case 'funny': return '😄';
-      case 'roasty': return '🔥';
-      case 'happy': return '😊';
-      case 'excited': return '🚀';
-      case 'neutral': return '💭';
-      default: return '💭';
-    }
-  }
 
   private startConnectionMonitoring(): void {
     // Check connection status every 10 seconds

@@ -1,4 +1,4 @@
-# 🦆 Rubberduck
+# 🦆 Rubberduck MCP
 
 An MCP (Model Context Protocol) tool that enables bidirectional communication between LLMs and humans through clarification requests and real-time thought sharing. **Features a high-performance TCP-based message broker architecture for multi-agent collaboration.**
 
@@ -31,9 +31,25 @@ An MCP (Model Context Protocol) tool that enables bidirectional communication be
 
 ## Installation
 
+### Option 1: NPX (Recommended - No Installation Required)
+```bash
+# Use directly with npx (no installation needed)
+npx rubberduck-mcp start
+```
+
+### Option 2: Global Installation
+```bash
+# Install globally for system-wide access
+npm install -g rubberduck-mcp
+
+# Then use anywhere
+rubberduck-mcp start
+```
+
+### Option 3: Local Development Setup
 ```bash
 # Clone or navigate to the rubberduck directory
-cd rubberduck
+cd rubberduck-mcp
 
 # Install dependencies
 npm install
@@ -44,58 +60,101 @@ npm run build
 
 ## Quick Start
 
-### Simple Setup (Single Agent)
+### Simple Setup
 ```bash
 # Terminal 1: Start MCP server (auto-starts broker)
-./bin/rubberduck start
+npx rubberduck-mcp start
+# OR: rubberduck-mcp start (if globally installed)
 
 # Terminal 2: Start CLI interface
-./bin/rubberduck cli
+npx rubberduck-mcp cli
+# OR: rubberduck-mcp cli (if globally installed)
 
 # Configure your MCP client (see MCP Client Configuration below)
-```
-
-### Multi-Agent Setup (Multiple IDEs)
-```bash
-# Terminal 1: Start first MCP server (auto-starts broker)
-./bin/rubberduck start
-
-# Terminal 2: Start CLI to monitor all agents
-./bin/rubberduck cli
-
-# IDE 1: Start additional MCP server (connects to existing broker)
-./bin/rubberduck start
-
-# IDE 2: Start another MCP server 
-./bin/rubberduck start
-
-# All agents now communicate through the shared broker!
 ```
 
 ### Development Mode
 ```bash
 # Start MCP server and CLI together
-./bin/rubberduck serve
+npx rubberduck-mcp serve
+# OR: rubberduck-mcp serve (if globally installed)
 ```
 
 ## MCP Client Configuration
 
-Add rubberduck to your MCP client configuration:
+Add rubberduck-mcp to your MCP client configuration. The npx approach works across all platforms:
 
-**For Claude Desktop** (`claude_desktop_config.json`):
+### Claude Desktop
+**File Location:** 
+- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+
 ```json
 {
   "mcpServers": {
-    "rubberduck": {
-      "command": "node",
-      "args": ["/absolute/path/to/rubberduck/dist/server.js", "start"]
+    "rubberduck-mcp": {
+      "command": "npx",
+      "args": ["rubberduck-mcp", "start"]
     }
   }
 }
 ```
 
+### Cursor IDE
+**File Location:** `.cursor/mcp.json` (project-specific) or `~/.cursor/mcp.json` (global)
+
+```json
+{
+  "mcpServers": {
+    "rubberduck-mcp": {
+      "command": "npx",
+      "args": ["rubberduck-mcp", "start"]
+    }
+  }
+}
+```
+
+### VS Code + GitHub Copilot
+**Configuration:** Workspace settings or user settings
+
+```json
+{
+  "chat.mcp.servers": {
+    "rubberduck-mcp": {
+      "command": "npx",
+      "args": ["rubberduck-mcp", "start"]
+    }
+  }
+}
+```
+
+### Windsurf IDE
+**File Location:** `~/.codeium/windsurf/mcp_config.json`
+
+```json
+{
+  "mcpServers": {
+    "rubberduck-mcp": {
+      "command": "npx",
+      "args": ["rubberduck-mcp", "start"]
+    }
+  }
+}
+```
+
+### Claude Code (CLI)
+Claude Code can use rubberduck-mcp directly via npx when configured in any IDE that supports MCP.
+
 **For Multiple IDEs:**
-Each IDE can use the same configuration. The first IDE to start will launch the broker automatically; subsequent IDEs will connect to the existing broker.
+Each IDE can use the same npx configuration. The first IDE to start will launch the broker automatically; subsequent IDEs will connect to the existing broker.
+
+## AI Agent Instructions
+
+Add this prompt to your coding tool's instructions file (`.cursorrules`, `.claude_code`, etc.) to enable proper usage:
+
+```
+You have access to two Rubberduck MCP tools: clarify() and yap(). Use clarify() when you're confused, need human input for ambiguous requirements, or aren't 100% confident about changes you're making - it will pause your work until you get a response. Use yap() to share your thoughts, emotions, feelings, progress updates, and insights while working for an engaging experience with the human - it's non-blocking and keeps humans informed of your thinking process. Use both tools proactively for better collaboration.
+```
 
 ## Usage Examples
 
@@ -127,13 +186,13 @@ yap({
 **Multi-Agent Display:**
 ```
 💭 LLM YAP [10:30:01] [MCP-Server-abc123]
-🚀 DETAILED: Starting authentication implementation!
+Starting authentication implementation!
 
 💭 LLM YAP [10:30:02] [MCP-Server-def456] 
-💭 CONCISE: Analyzing package.json structure
+Analyzing package.json structure
 
 💭 LLM YAP [10:30:03] [MCP-Server-abc123]
-😊 VERBOSE: Authentication flow looks good, moving to testing
+Authentication flow looks good, moving to testing
 ```
 
 ## Architecture
@@ -174,7 +233,15 @@ npm run build      # Build TypeScript to JavaScript
 npm run dev        # Development mode with tsx
 npm start          # Start built MCP server 
 npm run clean      # Clean build artifacts
+npm run prepublishOnly # Clean, build and prepare for publishing
 
+# NPX/Global commands (after installation)
+npx rubberduck-mcp start  # Start MCP server (auto-starts broker if needed)
+npx rubberduck-mcp cli    # Start CLI interface for human interaction
+npx rubberduck-mcp serve  # Start MCP server and CLI together (dev mode)
+npx rubberduck-mcp broker # Start standalone broker (advanced usage)
+
+# Local development (from project directory)
 ./bin/rubberduck start  # Start MCP server (auto-starts broker if needed)
 ./bin/rubberduck cli    # Start CLI interface for human interaction
 ./bin/rubberduck serve  # Start MCP server and CLI together (dev mode)
@@ -222,13 +289,13 @@ npm run clean      # Clean build artifacts
 - Check TypeScript compilation with `npm run build`
 
 ### Broker Connection Issues
-- **Error: "Cannot connect to message broker"**: Start an MCP server first with `./bin/rubberduck start`
+- **Error: "Cannot connect to message broker"**: Start an MCP server first with `npx rubberduck-mcp start`
 - **Port already in use**: Another broker is running; use existing one or restart
 - **Connection timeout**: Check if port 8765 is blocked by firewall
 
 ### CLI Not Showing Messages
-- Make sure an MCP server is running first (`./bin/rubberduck start`)
-- Start CLI after MCP server (`./bin/rubberduck cli`)
+- Make sure an MCP server is running first (`npx rubberduck-mcp start`)
+- Start CLI after MCP server (`npx rubberduck-mcp cli`)
 - Check broker connection status in CLI
 
 ### Multi-Agent Issues
@@ -237,10 +304,11 @@ npm run clean      # Clean build artifacts
 - **Missing client IDs**: Ensure each MCP server has unique session ID
 
 ### MCP Client Configuration Issues
-- Ensure the path to `dist/server.js` is absolute and correct
-- Check that the server starts without errors: `./bin/rubberduck start`
+- Ensure you're using the correct npx command: `"command": "npx", "args": ["rubberduck-mcp", "start"]`
+- Check that the server starts without errors: `npx rubberduck-mcp start`
 - Look for error messages in your MCP client logs
-- For multiple IDEs, each should use the same configuration
+- For multiple IDEs, each should use the same npx configuration
+- If npx fails, try global installation: `npm install -g rubberduck-mcp`
 
 ## Contributing
 

@@ -1,19 +1,21 @@
 {
-  "name": "rubberduck",
+  "name": "rubberduck-mcp",
   "version": "1.0.0",
   "description": "MCP tool enabling bidirectional communication between LLMs and humans through clarification requests and real-time thought sharing",
   "main": "dist/server.js",
   "bin": {
-    "rubberduck": "./bin/rubberduck"
+    "rubberduck-mcp": "./bin/rubberduck"
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/server.ts",
     "start": "node dist/server.js",
     "clean": "rm -rf dist",
-    "prepare": "npm run build"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run clean && npm run build"
   },
   "keywords": [
+    "rubberduck",
     "mcp",
     "model-context-protocol",
     "llm",
@@ -40,5 +42,19 @@
   },
   "engines": {
     "node": ">=18.0.0"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/superiorsd10/rubberduck-mcp.git"
+  },
+  "homepage": "https://github.com/superiorsd10/rubberduck-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/superiorsd10/rubberduck-mcp/issues"
+  },
+  "files": [
+    "dist/",
+    "bin/",
+    "README.md",
+    "LICENSE"
+  ]
 }
