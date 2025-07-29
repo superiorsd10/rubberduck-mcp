@@ -140,7 +140,7 @@ class RubberduckServer {
         const brokerAvailable = await BrokerManager.waitForBroker(8765, 5000);
         if (!brokerAvailable) {
           throw new Error(
-            'No message broker found. Please start an MCP server first with: ./bin/rubberduck start'
+            'No message broker found. Please start an MCP server first with: rubberduck-mcp start'
           );
         }
       }
@@ -210,14 +210,14 @@ async function main() {
 
   // Add usage information
   program.addHelpText('before', `
-🦆 Rubberduck - LLM-Human Collaboration Tool
+🦆 rubberduck-mcp - Make AI coding feel human
 
 Quick Start:
-  1. Start MCP server: ./bin/rubberduck start    (auto-starts broker)
-  2. Start CLI:        ./bin/rubberduck cli
-  3. Add more servers: ./bin/rubberduck start    (connects to existing broker)
+  1. Start MCP server: rubberduck-mcp start    (auto-starts broker)
+  2. Start CLI:        rubberduck-mcp cli
+  3. Add more servers: rubberduck-mcp start    (connects to existing broker)
 
-The first 'start' command automatically launches the message broker.
+Your AI can now ask for help and share thoughts while coding!
 `);
 
   program
@@ -261,7 +261,7 @@ The first 'start' command automatically launches the message broker.
       
       // Fork process for MCP server (will auto-start broker)
       const { spawn } = await import('child_process');
-      const serverProcess = spawn(process.execPath, [__filename, 'start'], {
+      const serverProcess = spawn('rubberduck-mcp', ['start'], {
         stdio: ['pipe', 'pipe', 'inherit']
       });
       

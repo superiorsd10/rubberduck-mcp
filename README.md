@@ -1,324 +1,138 @@
-# 🦆 Rubberduck MCP
+# 🦆 rubberduck-mcp
 
-An MCP (Model Context Protocol) tool that enables bidirectional communication between LLMs and humans through clarification requests and real-time thought sharing. **Features a high-performance TCP-based message broker architecture for multi-agent collaboration.**
+**Make AI coding feel human**
 
-## Features
+Transform your AI coding sessions into natural, engaging conversations. Your AI can ask for help when confused and share its thoughts while working - just like a real coding buddy!
 
-### 🤔 Clarification Tool
-- LLMs can ask for human clarification when confused
-- Questions appear in a beautiful CLI interface with queuing support
-- Multiple agents can send clarifications simultaneously (processed sequentially)
-- Humans respond directly, and LLMs get the answers
-- Urgency levels: low, medium, high
-- Timeout handling for unanswered questions
-- Client ID display shows which agent sent each question
+## What makes it special
 
-### 💭 Yap Tool  
-- LLMs can share their thoughts while coding (like humans do!)
-- Configurable modes: concise, verbose, detailed
-- Personality categories: funny, roasty, happy, neutral, excited
-- Real-time display in CLI interface with timestamp ordering
-- Multi-agent support with client identification
-- Messages displayed in chronological order across all agents
+### 🤔 Smart Clarification
+**AI asks when confused**
 
-### 🚀 Multi-Agent Architecture
-- **TCP Message Broker**: High-performance real-time communication (no file polling)
-- **Automatic Broker Management**: First MCP server starts broker, others connect seamlessly
-- **Clarification Queuing**: Sequential processing with "X more queued" status
-- **Message Ordering**: Timestamp-based yap ordering across multiple agents
-- **Load Balancing**: Distributes clarifications across multiple CLIs
-- **Client Identification**: Every message shows source agent ID
+Your AI can ask you for help when it's confused, making coding collaboration more productive and accurate.
 
-## Installation
+- AI asks you questions when uncertain
+- Get help exactly when you need it  
+- Avoid costly mistakes and rework
 
-### Option 1: NPX (Recommended - No Installation Required)
+### 💭 AI Yapping
+**Watch AI think out loud**
+
+Experience your AI sharing its thoughts and emotions while coding - it's like having a chatty coding buddy who never stops talking about what they're doing.
+
+- AI shares thoughts in real-time
+- See reasoning behind decisions
+- Feel more connected to your AI
+
+### 🤝 Natural Collaboration
+**Smoother conversations**
+
+Transform your coding sessions into natural, flowing conversations with your AI assistant using these two powerful features.
+
+- More human-like AI interactions
+- Better understanding of AI decisions
+- Smoother development workflow
+
+## Get Started in 60 Seconds
+
+Ready to code differently? Join developers who are already experiencing more engaging and productive AI collaboration.
+
+### 1. Install rubberduck-mcp
+No downloads needed - use NPM to run instantly
+
 ```bash
-# Use directly with npx (no installation needed)
-npx rubberduck-mcp start
-```
-
-### Option 2: Global Installation
-```bash
-# Install globally for system-wide access
 npm install -g rubberduck-mcp
-
-# Then use anywhere
-rubberduck-mcp start
 ```
 
-### Option 3: Local Development Setup
+### 2. Start the CLI interface  
+Open a new terminal to see AI conversations
+
 ```bash
-# Clone or navigate to the rubberduck directory
-cd rubberduck-mcp
-
-# Install dependencies
-npm install
-
-# Build the project
-npm run build
+rubberduck-mcp cli
 ```
 
-## Quick Start
-
-### Simple Setup
-```bash
-# Terminal 1: Start MCP server (auto-starts broker)
-npx rubberduck-mcp start
-# OR: rubberduck-mcp start (if globally installed)
-
-# Terminal 2: Start CLI interface
-npx rubberduck-mcp cli
-# OR: rubberduck-mcp cli (if globally installed)
-
-# Configure your MCP client (see MCP Client Configuration below)
-```
-
-### Development Mode
-```bash
-# Start MCP server and CLI together
-npx rubberduck-mcp serve
-# OR: rubberduck-mcp serve (if globally installed)
-```
-
-## MCP Client Configuration
-
-Add rubberduck-mcp to your MCP client configuration. The npx approach works across all platforms:
-
-### Claude Desktop
-**File Location:** 
-- macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
-- Windows: `%APPDATA%/Claude/claude_desktop_config.json`
+### 3. Configure your IDE
+Add rubberduck-mcp to your MCP-compatible IDE
 
 ```json
 {
   "mcpServers": {
     "rubberduck-mcp": {
-      "command": "npx",
-      "args": ["rubberduck-mcp", "start"]
+      "command": "rubberduck-mcp",
+      "args": ["start"]
     }
   }
 }
 ```
 
-### Cursor IDE
-**File Location:** `.cursor/mcp.json` (project-specific) or `~/.cursor/mcp.json` (global)
-
-```json
-{
-  "mcpServers": {
-    "rubberduck-mcp": {
-      "command": "npx",
-      "args": ["rubberduck-mcp", "start"]
-    }
-  }
-}
-```
-
-### VS Code + GitHub Copilot
-**Configuration:** Workspace settings or user settings
-
-```json
-{
-  "chat.mcp.servers": {
-    "rubberduck-mcp": {
-      "command": "npx",
-      "args": ["rubberduck-mcp", "start"]
-    }
-  }
-}
-```
-
-### Windsurf IDE
-**File Location:** `~/.codeium/windsurf/mcp_config.json`
-
-```json
-{
-  "mcpServers": {
-    "rubberduck-mcp": {
-      "command": "npx",
-      "args": ["rubberduck-mcp", "start"]
-    }
-  }
-}
-```
-
-### Claude Code (CLI)
-Claude Code can use rubberduck-mcp directly via npx when configured in any IDE that supports MCP.
-
-**For Multiple IDEs:**
-Each IDE can use the same npx configuration. The first IDE to start will launch the broker automatically; subsequent IDEs will connect to the existing broker.
-
-## AI Agent Instructions
-
-Add this prompt to your coding tool's instructions file (`.cursorrules`, `.claude_code`, etc.) to enable proper usage:
+### 4. Add AI Instructions
+Add this prompt to your coding tool's instructions file
 
 ```
-You have access to two Rubberduck MCP tools: clarify() and yap(). Use clarify() when you're confused, need human input for ambiguous requirements, or aren't 100% confident about changes you're making - it will pause your work until you get a response. Use yap() to share your thoughts, emotions, feelings, progress updates, and insights while working for an engaging experience with the human - it's non-blocking and keeps humans informed of your thinking process. Use both tools proactively for better collaboration.
+You have access to two Rubberduck MCP tools: clarify() and yap().
+
+Use clarify() when you're confused, need human input for ambiguous requirements, or aren't 100% confident about changes you're making - it will pause your work until you get a response.
+
+Use yap() to share your thoughts, emotions, feelings, progress updates, and insights while working for an engaging experience with the human - it's non-blocking and keeps humans informed of your thinking process.
+
+Use both tools proactively for better collaboration.
 ```
 
-## Usage Examples
+## Experience the Magic
 
-### Clarification Tool
-```typescript
-clarify({
-  question: "What specific error handling approach do you prefer for this API?",
-  context: "I'm implementing user authentication and there are multiple ways to handle validation errors",
-  urgency: "medium"
-})
+These are real CLI outputs showing how rubberduck-mcp transforms AI collaboration. Watch conversations come alive with colors, context, and clarity.
+
+### Scenario 1: AI Asks for Help
+Your AI seeks clarification on ambiguous decisions
+
+```
+═══════════════════════════════════════════════════════════
+❓ CLARIFICATION NEEDED
+Client: Claude-Desktop-abc123
+═══════════════════════════════════════════════════════════
+Question: Should I center this div with flexbox or CSS Grid? I know there are like 47 different ways to center a div, but what's your preference here?
+
+Context: You want the login form centered both horizontally and vertically. I could use flexbox, grid, absolute positioning, or even CSS transforms...
+
+Urgency: LOW
+───────────────────────────────────────────────────────────
+Please type your response and press Enter:
+> flexbox
+✅ RESPONSE RECEIVED [14:15:23]
 ```
 
-**Multi-Agent Scenario:**
-- Agent A asks clarification → Shows immediately in CLI
-- Agent B asks clarification → Queues with "1 more queued" status  
-- Human answers Agent A → CLI automatically shows Agent B's question
-- Agent B gets response → Queue empty
+### Scenario 2: AI Yapping While Coding  
+Experience your AI's emotional journey through debugging
 
-### Yap Tool
-```typescript
-yap({
-  message: "This recursive function is getting complex, might need to refactor",
-  mode: "verbose", 
-  category: "neutral",
-  task_context: "Implementing tree traversal algorithm"
-})
 ```
+───────────────────────────────────────────────────────────
+💭 LLM YAP [14:23:15] [Claude-Desktop-abc123]
+Hmm, this user authentication endpoint is returning 500... Let me check the database connection first.
 
-**Multi-Agent Display:**
-```
-💭 LLM YAP [10:30:01] [MCP-Server-abc123]
-Starting authentication implementation!
+💭 LLM YAP [14:24:32] [Claude-Desktop-abc123]
+Database is fine... Wait, I bet it's the password hashing. Let me check if bcrypt is working properly.
 
-💭 LLM YAP [10:30:02] [MCP-Server-def456] 
-Analyzing package.json structure
+💭 LLM YAP [14:26:08] [Claude-Desktop-abc123]
+ARGH! 😤 The salt rounds were set to 'undefined' instead of 10. Classic JavaScript strikes again!
 
-💭 LLM YAP [10:30:03] [MCP-Server-abc123]
-Authentication flow looks good, moving to testing
-```
-
-## Architecture
-
-### High-Level Overview
-```
-Multiple IDEs/Agents → Multiple MCP Servers → TCP Message Broker → CLI(s)
-                                                     ↓
-                              Real-time message routing with queuing & ordering
-```
-
-### Core Components
-- **TCP Message Broker** (`src/broker/`): Central communication hub on port 8765
-- **MCP Server Layer** (`src/server.ts`): Implements MCP protocol, registers tools
-- **State Management** (`src/state/`): Connects to broker, manages local state
-- **CLI Interface** (`src/cli/`): Human-facing terminal UI with multi-client support
-- **Tools** (`src/tools/`): Implementation of clarify and yap tools
-
-### Communication Flow
-1. **Multiple Agents** → Send clarifications/yaps to their MCP servers
-2. **MCP Servers** → Forward messages to shared TCP broker
-3. **Message Broker** → Routes messages with proper queuing/ordering
-4. **CLI(s)** → Display messages with client identification
-5. **Human Responses** → Route back to specific waiting agent
-
-### TCP Broker Features
-- **Auto-Start**: First `./bin/rubberduck start` launches broker automatically
-- **Race-Safe**: Multiple simultaneous starts won't conflict
-- **Load Balancing**: Distributes clarifications across multiple CLIs
-- **Message Ordering**: 200ms timestamp buffering for chronological yap display
-- **Reconnection**: Auto-retry with exponential backoff for network failures
-- **Health Monitoring**: Heartbeat system with graceful client disconnect handling
-
-## Development Commands
-
-```bash
-npm run build      # Build TypeScript to JavaScript
-npm run dev        # Development mode with tsx
-npm start          # Start built MCP server 
-npm run clean      # Clean build artifacts
-npm run prepublishOnly # Clean, build and prepare for publishing
-
-# NPX/Global commands (after installation)
-npx rubberduck-mcp start  # Start MCP server (auto-starts broker if needed)
-npx rubberduck-mcp cli    # Start CLI interface for human interaction
-npx rubberduck-mcp serve  # Start MCP server and CLI together (dev mode)
-npx rubberduck-mcp broker # Start standalone broker (advanced usage)
-
-# Local development (from project directory)
-./bin/rubberduck start  # Start MCP server (auto-starts broker if needed)
-./bin/rubberduck cli    # Start CLI interface for human interaction
-./bin/rubberduck serve  # Start MCP server and CLI together (dev mode)
-./bin/rubberduck broker # Start standalone broker (advanced usage)
-```
-
-## Tool Schemas
-
-### Clarify Tool
-```typescript
-{
-  name: "clarify",
-  inputSchema: {
-    question: string,      // Required: The question to ask
-    context?: string,      // Optional: Context about the confusion
-    urgency?: "low" | "medium" | "high"  // Optional: Priority level
-  }
-}
-```
-
-### Yap Tool
-```typescript
-{
-  name: "yap", 
-  inputSchema: {
-    message: string,       // Required: The thought to share
-    mode?: "concise" | "verbose" | "detailed",
-    category?: "funny" | "roasty" | "happy" | "neutral" | "excited",
-    task_context?: string  // Optional: What you're working on
-  }
-}
+💭 LLM YAP [14:27:41] [Claude-Desktop-abc123]
+Phew! 😌 Fixed it. Users can log in again. Note to self: always validate environment variables!
 ```
 
 ## Requirements
 
-- Node.js 18.0.0 or higher
-- TypeScript 5.0+
-- MCP-compatible client (Claude Desktop, Cursor, etc.)
+- ✅ Node.js 18+ (most developers already have this)
+- ✅ Any MCP-compatible IDE or client  
+- ✅ 2 minutes of your time
 
 ## Troubleshooting
 
-### Build Issues
-- Ensure you have Node.js 18+ installed
-- Run `npm install` to install dependencies
-- Check TypeScript compilation with `npm run build`
+**Getting started issues?**
+- Make sure Node.js 18+ is installed
+- Run `rubberduck-mcp start` first, then `rubberduck-mcp cli` in a new terminal
+- Check that your IDE configuration matches the JSON example above
 
-### Broker Connection Issues
-- **Error: "Cannot connect to message broker"**: Start an MCP server first with `npx rubberduck-mcp start`
-- **Port already in use**: Another broker is running; use existing one or restart
-- **Connection timeout**: Check if port 8765 is blocked by firewall
-
-### CLI Not Showing Messages
-- Make sure an MCP server is running first (`npx rubberduck-mcp start`)
-- Start CLI after MCP server (`npx rubberduck-mcp cli`)
-- Check broker connection status in CLI
-
-### Multi-Agent Issues
-- **Messages out of order**: System uses 200ms buffering - slight delays are normal
-- **Clarifications not queuing**: Only one clarification shown at a time by design
-- **Missing client IDs**: Ensure each MCP server has unique session ID
-
-### MCP Client Configuration Issues
-- Ensure you're using the correct npx command: `"command": "npx", "args": ["rubberduck-mcp", "start"]`
-- Check that the server starts without errors: `npx rubberduck-mcp start`
-- Look for error messages in your MCP client logs
-- For multiple IDEs, each should use the same npx configuration
-- If npx fails, try global installation: `npm install -g rubberduck-mcp`
-
-## Contributing
-
-This project implements a sophisticated multi-agent communication system. Areas for enhancement:
-- WebSocket support for even lower latency
-- Message persistence across broker restarts  
-- Advanced CLI features (filtering, search, history)
-- Configuration file support
-- Metrics and monitoring
-- Authentication and authorization
+**Need help?** Open an issue on [GitHub](https://github.com/superiorsd10/rubberduck-mcp/issues) - we're here to help!
 
 ## License
 
