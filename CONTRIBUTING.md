@@ -168,7 +168,7 @@ What actually happened
 **Environment**
 - OS: macOS 14.0
 - Node.js: 18.17.0
-- rubberduck-mcp: 1.0.1
+- rubberduck-mcp: 1.1.1
 - MCP Client: Claude Code 1.2.0
 ```
 
