@@ -56,7 +56,7 @@ This is an MCP (Model Context Protocol) tool that enables bidirectional communic
 1. **MCP Server** (`src/server.ts`): Implements MCP protocol, registers tools, handles JSON-RPC requests
 2. **State Manager** (`src/state/manager.ts`): Connects to broker via MessageQueue, manages local state
 3. **Message Queue** (`src/state/message-queue.ts`): Wrapper around BrokerClient for backward compatibility
-4. **CLI Interface** (`src/cli/interface.ts`): Human-facing terminal UI with clarification queuing and client ID display
+4. **CLI Interface** (`src/cli/interface.ts`): Human-facing terminal UI with clarification queuing and timestamp display
 
 ### Communication Flow (TCP-Based)
 
@@ -67,8 +67,8 @@ This is an MCP (Model Context Protocol) tool that enables bidirectional communic
 - Agent A clarification complete → CLI automatically shows Agent B's clarification
 
 **Yap Message Ordering:**
-- Multiple agents send yaps → Broker buffers by timestamp → CLI displays in chronological order with client IDs
-- Example: `[MCP-Server-abc123] Starting task X` followed by `[MCP-Server-def456] Working on Y`
+- Multiple agents send yaps → Broker buffers by timestamp → CLI displays in chronological order
+- Timestamps ensure proper ordering across multiple agents
 
 ### Critical TCP Broker Concepts
 
@@ -82,7 +82,7 @@ This is an MCP (Model Context Protocol) tool that enables bidirectional communic
 - **Clarification Queuing**: CLI processes one clarification at a time, queues others with "X more queued" display
 - **Yap Ordering**: 200ms timestamp-based buffering ensures chronological display across multiple agents
 - **Load Balancing**: Clarifications distribute across multiple CLIs based on queue length
-- **Client Identification**: All messages show source client ID for traceability
+- **Clean Display**: Client IDs are used internally for routing but not shown to users
 
 **Connection Management:**
 - Auto-reconnection with exponential backoff for network failures
@@ -143,8 +143,7 @@ interface BrokerMessage {
 **Clarification Queue Display:**
 ```
 ═══════════════════════════════════════════════════════════
-❓ CLARIFICATION NEEDED (2 more queued)
-Client: MCP-Server-abc123
+❓ CLARIFICATION NEEDED [14:15:10] (2 more queued)
 ═══════════════════════════════════════════════════════════
 Question: Should I use async/await or promises?
 Context: Implementing database queries
@@ -152,12 +151,12 @@ Urgency: MEDIUM
 ───────────────────────────────────────────────────────────
 ```
 
-**Yap Message Display with Client IDs (Simplified):**
+**Yap Message Display:**
 ```
-💭 LLM YAP [10:30:01] [MCP-Server-abc123]
+💭 LLM YAP [10:30:01]
 Starting authentication implementation!
 
-💭 LLM YAP [10:30:02] [MCP-Server-def456]
+💭 LLM YAP [10:30:02]
 Analyzing package.json structure
 ```
 
@@ -237,11 +236,12 @@ The package is configured as **"rubberduck-mcp"** for npm distribution:
 
 ## Important Implementation Notes
 
-**CLI Yap Display Changes:**
-- The CLI interface (`src/cli/interface.ts`) displays simplified yap messages
-- No category emojis or mode text shown to users
-- Format: `💭 LLM YAP [timestamp] [clientId] message`
-- The `getCategoryEmoji()` method has been removed
+**CLI Display Implementation:**
+- The CLI interface (`src/cli/interface.ts`) displays clean, simplified messages
+- Both clarifications and yap messages show timestamps for consistency
+- No client IDs shown to users (used internally for routing only)
+- No category emojis or mode text shown to keep interface clean
+- Format: `💭 LLM YAP [timestamp]` and `❓ CLARIFICATION NEEDED [timestamp]`
 
 **Publish Preparation:**
 - Use `npm run prepublishOnly` before publishing
