@@ -1,7 +1,7 @@
 import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
 import { MessageQueue } from './message-queue';
-import { initializeLogger, logError, logInfo, logWarn } from '../utils/logger';
+import { initializeLogger, logError, logInfo, logWarn, LogLevel } from '../utils/logger';
 import { 
   RubberduckState, 
   ClarificationRequest, 
@@ -29,7 +29,7 @@ export class StateManager extends EventEmitter {
     this.sessionId = sessionId || uuidv4();
     
     // Initialize logger for this session
-    initializeLogger(this.sessionId);
+    initializeLogger(this.sessionId, LogLevel.INFO, !isServer);
     
     this.messageQueue = new MessageQueue(this.sessionId);
     this.state = {

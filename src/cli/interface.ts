@@ -113,15 +113,10 @@ export class CLIInterface {
     const clarification = this.currentClarification;
     const queueInfo = this.clarificationQueue.length > 0 ? 
       ` (${this.clarificationQueue.length} more queued)` : '';
+    const timestamp = new Date(clarification.timestamp).toLocaleTimeString();
     
     console.log('\n' + '═'.repeat(70));
-    console.log(chalk.yellow.bold(`❓ CLARIFICATION NEEDED${queueInfo}`));
-    
-    // Show source client ID if available
-    if (clarification.sourceClientId) {
-      console.log(chalk.dim(`Client: ${clarification.sourceClientId}`));
-    }
-    
+    console.log(chalk.yellow.bold(`❓ CLARIFICATION NEEDED [${timestamp}]${queueInfo}`));
     console.log('═'.repeat(70));
     console.log(chalk.bold('Question:'), clarification.question);
     
@@ -148,12 +143,8 @@ export class CLIInterface {
     
     const timestamp = new Date(yap.timestamp).toLocaleTimeString();
     
-    // Show client ID if available
-    const clientInfo = yap.sourceClientId ? 
-      chalk.dim(`[${yap.sourceClientId}] `) : '';
-    
     console.log('\n' + '─'.repeat(50));
-    console.log(chalk.blue.bold(`💭 LLM YAP [${timestamp}] ${clientInfo}`));
+    console.log(chalk.blue.bold(`💭 LLM YAP [${timestamp}]`));
     console.log(yap.message);
     
     if (yap.task_context) {
@@ -179,7 +170,7 @@ export class CLIInterface {
       
     } catch (error) {
       console.log(chalk.red(`❌ Error sending response: ${error instanceof Error ? error.message : 'Unknown error'}`));
-      console.log(chalk.yellow('💡 Try restarting the CLI or check if the server is running'));
+      console.log(chalk.yellow('💡 Make sure the MCP server is running: ') + chalk.bold('rubberduck-mcp start'));
     }
   }
 
@@ -204,13 +195,14 @@ export class CLIInterface {
       
       // Only show messages when status changes to avoid spam
       if (!connectionStatus.isConnected && this.lastConnectionStatus) {
-        console.log('\n' + chalk.red('⚠️  No active message broker connection. Check if server is running.'));
+        console.log('\n' + chalk.red('⚠️  No MCP server detected.'));
+        console.log(chalk.yellow('💡 Start the server with: ') + chalk.bold('rubberduck-mcp start'));
         if (this.currentClarification) {
           this.rl.setPrompt(chalk.cyan('> '));
           this.rl.prompt();
         }
       } else if (connectionStatus.isConnected && !this.lastConnectionStatus) {
-        console.log('\n' + chalk.green('✅ Broker connection established!'));
+        console.log('\n' + chalk.green('✅ MCP server connected! Ready for interactions.'));
         if (this.currentClarification) {
           this.rl.setPrompt(chalk.cyan('> '));
           this.rl.prompt();

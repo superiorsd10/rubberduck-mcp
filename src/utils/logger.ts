@@ -23,11 +23,13 @@ export class Logger {
   private currentLevel: LogLevel;
   private maxLogSize: number = 1024 * 1024; // 1MB
   private maxLogFiles: number = 3;
+  private isCliMode: boolean;
 
-  constructor(sessionId: string, level: LogLevel = LogLevel.INFO) {
+  constructor(sessionId: string, level: LogLevel = LogLevel.INFO, isCliMode: boolean = false) {
     this.sessionId = sessionId;
     this.currentLevel = level;
     this.logPath = `/tmp/rubberduck-${sessionId}.log`;
+    this.isCliMode = isCliMode;
   }
 
   async error(message: string, error?: Error, context?: Record<string, any>): Promise<void> {
@@ -78,6 +80,12 @@ export class Logger {
   }
 
   private outputToConsole(entry: LogEntry): void {
+    // In CLI mode, suppress INFO and DEBUG logs to avoid cluttering user experience
+    // Only show ERROR and WARN levels for important messages
+    if (this.isCliMode && (entry.level === LogLevel.INFO || entry.level === LogLevel.DEBUG)) {
+      return;
+    }
+
     const timestamp = new Date(entry.timestamp).toISOString();
     const levelName = LogLevel[entry.level];
     const prefix = `[${timestamp}] ${levelName}:`;
@@ -172,8 +180,8 @@ export class Logger {
 // Global logger instance
 let globalLogger: Logger | null = null;
 
-export function initializeLogger(sessionId: string, level: LogLevel = LogLevel.INFO): Logger {
-  globalLogger = new Logger(sessionId, level);
+export function initializeLogger(sessionId: string, level: LogLevel = LogLevel.INFO, isCliMode: boolean = false): Logger {
+  globalLogger = new Logger(sessionId, level, isCliMode);
   return globalLogger;
 }
 
