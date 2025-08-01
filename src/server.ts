@@ -25,7 +25,7 @@ class RubberduckServer {
     this.server = new Server(
       {
         name: 'rubberduck',
-        version: '1.1.1',
+        version: '1.1.2',
         description: 'MCP tool for LLM-human collaboration with clarification and yap features'
       },
       {
@@ -206,7 +206,7 @@ async function main() {
   program
     .name('rubberduck')
     .description('MCP tool for LLM-human collaboration')
-    .version('1.1.1');
+    .version('1.1.2');
 
   // Add usage information
   program.addHelpText('before', `
