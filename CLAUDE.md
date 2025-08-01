@@ -2,6 +2,14 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+You have access to two Rubberduck MCP tools: clarify() and yap().
+
+Use clarify() when you're confused, need human input for ambiguous requirements, or aren't 100% confident about changes you're making - it will pause your work until you get a response.
+
+Use yap() to share your thoughts, emotions, feelings, progress updates, and insights while working for an engaging experience with the human - it's non-blocking and keeps humans informed of your thinking process.
+
+Use both tools proactively for better collaboration.
+
 ## Development Commands
 
 ```bash

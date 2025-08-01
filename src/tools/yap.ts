@@ -85,10 +85,7 @@ export class YapTool {
     // Apply mode formatting
     switch (mode) {
       case 'concise':
-        // Keep as is, maybe truncate if too long
-        if (formatted.length > 100) {
-          formatted = formatted.substring(0, 97) + '...';
-        }
+        // Keep as is
         break;
       case 'verbose':
         // Add some explanatory context if message is too short
