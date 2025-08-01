@@ -1,6 +1,6 @@
 {
   "name": "rubberduck-mcp",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "MCP tool enabling bidirectional communication between LLMs and humans through clarification requests and real-time thought sharing",
   "main": "dist/server.js",
   "bin": {
