@@ -140,7 +140,7 @@ class RubberduckServer {
         const brokerAvailable = await BrokerManager.waitForBroker(8765, 5000);
         if (!brokerAvailable) {
           throw new Error(
-            'No message broker found. Please start an MCP server first with: rubberduck-mcp start'
+            'Rubberduck CLI requires an active MCP connection.\n\nPlease start or reconnect the MCP server in your IDE, then try running the CLI again.'
           );
         }
       }
@@ -213,9 +213,8 @@ async function main() {
 🦆 rubberduck-mcp - Make AI coding feel human
 
 Quick Start:
-  1. Start MCP server: rubberduck-mcp start    (auto-starts broker)
-  2. Start CLI:        rubberduck-mcp cli
-  3. Add more servers: rubberduck-mcp start    (connects to existing broker)
+  1. Configure MCP server in your IDE
+  2. Start CLI: rubberduck-mcp cli
 
 Your AI can now ask for help and share thoughts while coding!
 `);

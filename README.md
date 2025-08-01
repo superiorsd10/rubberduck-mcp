@@ -132,8 +132,8 @@ Phew! 😌 Fixed it. Users can log in again. Note to self: always validate envir
 
 **Getting started issues?**
 - Make sure Node.js 18+ is installed
-- Run `rubberduck-mcp start` first, then `rubberduck-mcp cli` in a new terminal
-- Check that your IDE configuration matches the JSON example above
+- Ensure the MCP server is running in your IDE first, then run `rubberduck-mcp cli` in a new terminal
+- Check that your IDE's MCP configuration matches the JSON example above
 
 **Need help?** Open an issue on [GitHub](https://github.com/superiorsd10/rubberduck-mcp/issues) - we're here to help!
 

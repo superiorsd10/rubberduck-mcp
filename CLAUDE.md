@@ -31,21 +31,9 @@ npm run prepare
 # Prepare for npm publishing (clean + build)
 npm run prepublishOnly
 
-# Start MCP server (auto-starts broker if needed)
-npx rubberduck-mcp start
-# OR: ./bin/rubberduck start (local dev)
-
-# Start CLI interface for human interaction
+# Start CLI interface for human interaction (requires MCP server running in MCP compatible IDE)
 npx rubberduck-mcp cli
 # OR: ./bin/rubberduck cli (local dev)
-
-# Start MCP server and CLI together (dev mode)
-npx rubberduck-mcp serve
-# OR: ./bin/rubberduck serve (local dev)
-
-# Start standalone broker (advanced usage)
-npx rubberduck-mcp broker
-# OR: ./bin/rubberduck broker (local dev)
 ```
 
 ## Architecture Overview
@@ -170,7 +158,7 @@ Analyzing package.json structure
 
 ### MCP Client Configuration
 
-**Claude Desktop Integration:**
+**Claude Code Integration:**
 ```json
 {
   "mcpServers": {
@@ -183,7 +171,7 @@ Analyzing package.json structure
 ```
 
 **Multiple IDE Support:**
-Each IDE can start its own MCP server instance with `npx rubberduck-mcp start`. The first instance auto-starts the broker; subsequent instances connect to the existing broker.
+Each IDE can start its own MCP server instance with `rubberduck-mcp start`. The first instance auto-starts the broker; subsequent instances connect to the existing broker.
 
 ### Key Dependencies
 
